@@ -1,0 +1,1561 @@
+{
+  "name": "Email Management System",
+  "nodes": [
+    {
+      "parameters": {
+        "pollTimes": {
+          "item": [
+            {
+              "mode": "everyMinute"
+            }
+          ]
+        },
+        "filters": {
+          "labelIds": [
+            "INBOX"
+          ],
+          "readStatus": "unread"
+        }
+      },
+      "id": "b1802d5c-c9f2-467d-a937-bf30992ee8ca",
+      "name": "Gmail Trigger",
+      "type": "n8n-nodes-base.gmailTrigger",
+      "typeVersion": 1,
+      "position": [
+        -2240,
+        592
+      ],
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "SELECT COUNT(*) as duplicate_count \nFROM emails \nWHERE sender_email = '{{ $json.From }}' \nAND subject = '{{ $json.Subject }}' \nAND received_time >= NOW() - INTERVAL '24 hours';",
+        "options": {}
+      },
+      "id": "8275a981-4072-4b8c-a694-3429072f38f3",
+      "name": "Duplicate Check",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        -1728,
+        592
+      ],
+      "alwaysOutputData": false,
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "id": "f2b4bb88-d47b-4fc0-849b-794aa6bd8f58",
+                    "leftValue": "={{ $json.duplicate_count }}",
+                    "rightValue": "0",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Not Duplicate"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "id": "3d003339-a482-400f-9397-16338c182474",
+                    "leftValue": "={{ $json.duplicate_count }}",
+                    "rightValue": "0",
+                    "operator": {
+                      "type": "string",
+                      "operation": "notEquals"
+                    }
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Duplicate"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "87624a17-4d78-459f-8686-81db69c7dce1",
+      "name": "Is Duplicate?",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        -1488,
+        592
+      ]
+    },
+    {
+      "parameters": {
+        "fields": {
+          "values": [
+            {
+              "name": "category",
+              "stringValue": "={{ JSON.parse($json.text.replace(/\\\\n/g, '').trim()).category }}"
+            },
+            {
+              "name": "sentiment",
+              "stringValue": "={{ JSON.parse($json.text.replace(/\\\\n/g, '').trim()).sentiment }}"
+            },
+            {
+              "name": "priority",
+              "stringValue": "={{ JSON.parse($json.text.replace(/\\\\n/g, '').trim()).priority }}"
+            },
+            {
+              "name": "confidence",
+              "stringValue": "={{ JSON.parse($json.text.replace(/\\\\n/g, '').trim()).confidence }}"
+            },
+            {
+              "name": "manual_review",
+              "stringValue": "={{ JSON.parse($json.text.replace(/\\\\n/g, '').trim()).manual_review }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "643c95db-2e08-4406-b873-a5eab1ea117b",
+      "name": "Parse Gemini Response",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        -976,
+        480
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "1dSrmjAkmJNhPhH2foufeh8rX_1ann2PM6XdFBr1BKyA",
+          "mode": "list",
+          "cachedResultName": "Log automation",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1dSrmjAkmJNhPhH2foufeh8rX_1ann2PM6XdFBr1BKyA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1dSrmjAkmJNhPhH2foufeh8rX_1ann2PM6XdFBr1BKyA/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "13ad7004-b61e-4648-b8c9-23575813ef78",
+      "name": "Log to Google Sheets",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        -480,
+        480
+      ],
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "sendTo": "vijaypant486@gmail.com",
+        "subject": "=⚠️ Manual Review Required: {{ $('Prepare Email Data1').item.json.subject }}",
+        "emailType": "text",
+        "message": "={{ '⚠️ MANUAL REVIEW REQUIRED\\n\\nAn email could not be confidently classified and requires human review.\\n\\nSender: ' + $('Prepare Email Data1').item.json.sender + '\\nSubject: ' + $('Prepare Email Data1').item.json.subject + '\\n\\nAI Classification: ' + $('Parse Gemini Response').item.json.category + '\\nConfidence Score: ' + $('Parse Gemini Response').item.json.confidence + '\\nSentiment: ' + $('Parse Gemini Response').item.json.sentiment + '\\nPriority: ' + $('Parse Gemini Response').item.json.priority + '\\n\\nPlease review and respond manually.' }}",
+        "options": {}
+      },
+      "id": "6815e4d7-0254-43a1-8d53-081530d74075",
+      "name": "Send Manual Review Alert",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        0,
+        752
+      ],
+      "webhookId": "3e8875c7-e578-44eb-9d32-afd019cf47f6",
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE emails \nSET response_sent = true, reply_sent_at = NOW() \nWHERE id = {{ $('Postgres Insert Email1').item.json.id }};",
+        "options": {}
+      },
+      "id": "19d6c56a-b816-4191-b530-1900987d4a9f",
+      "name": "Update DB Job",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        256,
+        304
+      ],
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE emails \nSET response_sent = true, reply_sent_at = NOW() \nWHERE id = {{ $('Postgres Insert Email1').item.json.id }};",
+        "options": {}
+      },
+      "id": "d8378d7c-1475-406c-9709-28b1b2a68896",
+      "name": "Update DB Manual Review",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        256,
+        752
+      ],
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1dSrmjAkmJNhPhH2foufeh8rX_1ann2PM6XdFBr1BKyA",
+          "mode": "list",
+          "cachedResultName": "Log automation",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1dSrmjAkmJNhPhH2foufeh8rX_1ann2PM6XdFBr1BKyA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1dSrmjAkmJNhPhH2foufeh8rX_1ann2PM6XdFBr1BKyA/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "199fc1a6-0c84-4309-9a6b-884383a0bb5d",
+      "name": "Sheets Update Support",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        768,
+        0
+      ],
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1dSrmjAkmJNhPhH2foufeh8rX_1ann2PM6XdFBr1BKyA",
+          "mode": "list",
+          "cachedResultName": "Log automation",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1dSrmjAkmJNhPhH2foufeh8rX_1ann2PM6XdFBr1BKyA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1dSrmjAkmJNhPhH2foufeh8rX_1ann2PM6XdFBr1BKyA/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "feba4510-aefc-4e23-adbe-eb3c82ce5a0f",
+      "name": "Sheets Update Sales",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        768,
+        160
+      ],
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1dSrmjAkmJNhPhH2foufeh8rX_1ann2PM6XdFBr1BKyA",
+          "mode": "list",
+          "cachedResultName": "Log automation",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1dSrmjAkmJNhPhH2foufeh8rX_1ann2PM6XdFBr1BKyA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1dSrmjAkmJNhPhH2foufeh8rX_1ann2PM6XdFBr1BKyA/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "7bcde038-e8d4-4439-afec-cd7cd8c90330",
+      "name": "Sheets Update Job",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        768,
+        304
+      ],
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1dSrmjAkmJNhPhH2foufeh8rX_1ann2PM6XdFBr1BKyA",
+          "mode": "list",
+          "cachedResultName": "Log automation",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1dSrmjAkmJNhPhH2foufeh8rX_1ann2PM6XdFBr1BKyA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1dSrmjAkmJNhPhH2foufeh8rX_1ann2PM6XdFBr1BKyA/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "e1084f5d-a322-40d4-a38a-4de992fd9e22",
+      "name": "Sheets Update Complaint",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        768,
+        464
+      ],
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1dSrmjAkmJNhPhH2foufeh8rX_1ann2PM6XdFBr1BKyA",
+          "mode": "list",
+          "cachedResultName": "Log automation",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1dSrmjAkmJNhPhH2foufeh8rX_1ann2PM6XdFBr1BKyA/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "Sheet1",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1dSrmjAkmJNhPhH2foufeh8rX_1ann2PM6XdFBr1BKyA/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "autoMapInputData",
+          "value": {},
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "status",
+              "displayName": "status",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "id": "cd0d8131-7024-4598-9965-e23a04f87a67",
+      "name": "Sheets Update General",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4,
+      "position": [
+        768,
+        608
+      ],
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "fields": {
+          "values": [
+            {
+              "name": "sender",
+              "stringValue": "={{ $json.From }}"
+            },
+            {
+              "name": "subject",
+              "stringValue": "={{ $json.Subject }}"
+            },
+            {
+              "name": "body",
+              "stringValue": "={{ $json.snippet }}"
+            },
+            {
+              "name": "received_time",
+              "stringValue": "={{ $now }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "479cf54e-a3ab-4a86-a425-e94ae5ba1d56",
+      "name": "Prepare Email Data1",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3,
+      "position": [
+        -1984,
+        592
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "INSERT INTO emails (\n  sender_email, subject, email_body, category, sentiment,\n  priority, confidence_score, manual_review_flag, received_time,\n  response_sent, duplicate_flag\n)\nVALUES (\n  '{{ $('Prepare Email Data1').item.json.sender }}',\n  '{{ $('Prepare Email Data1').item.json.subject }}',\n  '{{ $('Prepare Email Data1').item.json.body }}',\n  '{{ $json.category }}',\n  '{{ $json.sentiment }}',\n  '{{ $json.priority }}',\n  {{ $json.confidence }},\n  {{ $json.manual_review }},\n  '{{ $('Prepare Email Data1').item.json.received_time }}'::timestamp with time zone,\n  false,\n  false\n)\nRETURNING id;",
+        "options": {}
+      },
+      "id": "0a44724b-16c2-45ad-b9c7-467f7e5aacde",
+      "name": "Postgres Insert Email1",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        -736,
+        480
+      ],
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "rules": {
+          "values": [
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Parse Gemini Response').item.json.category }}",
+                    "rightValue": "Support Request",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "9955f7e2-ea3d-444b-b30e-ddec4124f189"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Support Request"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Parse Gemini Response').item.json.category }}",
+                    "rightValue": "Sales Inquiry",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "5c5bae67-c6ac-4832-875e-bbc50908414f"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Sales Inquiry"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Parse Gemini Response').item.json.category }}",
+                    "rightValue": "Job Application",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "863cd189-5367-43fb-91dc-b8c48cb0276a"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Job Application"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Parse Gemini Response').item.json.category }}",
+                    "rightValue": "Complaint",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "a294760f-ae8e-443a-a1dd-f5861fbee75e"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Complaint"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Parse Gemini Response').item.json.category }}",
+                    "rightValue": "General Question",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "84f241c4-9482-4ced-b14c-122630c2fbe4"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "General Question"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Parse Gemini Response').item.json.category }}",
+                    "rightValue": "Spam",
+                    "operator": {
+                      "type": "string",
+                      "operation": "equals"
+                    },
+                    "id": "3fe77664-e9cd-442f-b877-c541bd336d46"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Spam"
+            },
+            {
+              "conditions": {
+                "options": {
+                  "caseSensitive": true,
+                  "leftValue": "",
+                  "typeValidation": "strict",
+                  "version": 1
+                },
+                "conditions": [
+                  {
+                    "leftValue": "={{ $('Parse Gemini Response').item.json.manual_review }}",
+                    "rightValue": true,
+                    "operator": {
+                      "type": "boolean",
+                      "operation": "equals"
+                    },
+                    "id": "83dbed1a-3264-4185-922b-44d6693d50cb"
+                  }
+                ],
+                "combinator": "and"
+              },
+              "renameOutput": true,
+              "outputKey": "Manual Review"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "2ee27ab7-5b02-4150-bb9d-46b7325cb6d6",
+      "name": "Category Router1",
+      "type": "n8n-nodes-base.switch",
+      "typeVersion": 3,
+      "position": [
+        -256,
+        400
+      ]
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Prepare Email Data1').item.json.sender }}",
+        "subject": "=Re: {{ $('Prepare Email Data1').item.json.subject }}",
+        "emailType": "text",
+        "message": "={{ ($('Parse Gemini Response').item.json.priority === 'High' ? 'URGENT: We have received your request and our support team is treating this as a high priority case. Someone will contact you within 2 hours.\\n\\n' : 'Thank you for reaching out. Our support team has received your request and will contact you shortly.\\n\\n') + 'Best regards,\\nSupport Team' }}",
+        "options": {}
+      },
+      "id": "79a42da1-75fb-421a-9139-22bfe05c37db",
+      "name": "Send Support Reply1",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        0,
+        0
+      ],
+      "webhookId": "3202b533-6f15-4fc8-8d9c-0e76dc1dc8dc",
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Prepare Email Data1').item.json.sender }}",
+        "subject": "=Re: {{ $('Prepare Email Data1').item.json.subject }}",
+        "emailType": "text",
+        "message": "={{ 'Thank you for your interest in our products and services. Our sales team will review your inquiry and reach out to you soon.\\n\\n' + ($('Parse Gemini Response').item.json.priority === 'High' ? 'Given the urgency of your inquiry, expect a response within 2 hours.' : 'You can expect a response within 24 hours.') + '\\n\\nBest regards,\\nSales Team' }}",
+        "options": {}
+      },
+      "id": "6a7890da-3602-452f-b55a-ea77fe40dd65",
+      "name": "Send Sales Reply1",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        0,
+        160
+      ],
+      "webhookId": "55291fbb-e9fe-477e-b6cb-486528668613",
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Prepare Email Data1').item.json.sender }}",
+        "subject": "=Re: {{ $('Prepare Email Data1').item.json.subject }}",
+        "emailType": "text",
+        "message": "={{ 'Thank you for applying to our company. Your application has been received by our HR department and will be reviewed shortly.\\n\\n' + ($('Parse Gemini Response').item.json.priority === 'High' ? 'Your application has been flagged for priority review.' : 'We will get back to you within 5-7 business days.') + '\\n\\nBest regards,\\nHR Team' }}",
+        "options": {}
+      },
+      "id": "9dac3755-e273-4805-97d7-0dee9129b249",
+      "name": "Send Job Application Reply1",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        0,
+        304
+      ],
+      "webhookId": "204db17d-c201-4441-bd41-dfff26eaad98",
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Prepare Email Data1').item.json.sender }}",
+        "subject": "=Re:{{ $('Prepare Email Data1').item.json.subject }}",
+        "emailType": "text",
+        "message": "={{ 'We sincerely apologize for the inconvenience you have experienced. We take all complaints seriously and will investigate this matter promptly.\\n\\n' + ($('Parse Gemini Response').item.json.sentiment === 'Angry' ? 'A senior team member has been notified and will personally follow up with you within 2 hours.' : 'We will get back to you within 24 hours.') + '\\n\\nBest regards,\\nCustomer Relations Team' }}",
+        "options": {}
+      },
+      "id": "d48d6513-9157-4c12-8e16-e34cd932c657",
+      "name": "Send Complaint Reply1",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        0,
+        464
+      ],
+      "webhookId": "5d383a2d-5848-4e4c-9719-bb4ae79c1a60",
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "sendTo": "={{ $('Prepare Email Data1').item.json.sender }}",
+        "subject": "=Re: {{ $('Prepare Email Data1').item.json.subject }}",
+        "emailType": "text",
+        "message": "={{ 'Thank you for contacting us. We have received your question and will get back to you as soon as possible.\\n\\n' + ($('Parse Gemini Response').item.json.priority === 'High' ? 'Given the urgency of your message, our team will respond within 2 hours.' : 'Our team typically responds within 24 hours.') + '\\n\\nBest regards,\\nCustomer Service Team' }}",
+        "options": {}
+      },
+      "id": "f9b0ee57-2372-4c0e-a5a6-c2486fd9a886",
+      "name": "Send General Reply1",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2,
+      "position": [
+        0,
+        608
+      ],
+      "webhookId": "fea080e8-8bc3-4e60-a301-caf3305dda18",
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE emails \nSET response_sent = true, reply_sent_at = NOW() \nWHERE id = {{ $('Postgres Insert Email1').item.json.id }};",
+        "options": {}
+      },
+      "id": "b0db7492-225e-4b75-becf-7d6207b47955",
+      "name": "Update DB Support1",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        256,
+        0
+      ],
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE emails \nSET response_sent = true, reply_sent_at = NOW() \nWHERE id = {{ $('Postgres Insert Email1').item.json.id }};",
+        "options": {}
+      },
+      "id": "4db45bc7-b0d6-4085-8baa-61909780b6b8",
+      "name": "Update DB Sales1",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        256,
+        160
+      ],
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE emails \nSET response_sent = true, reply_sent_at = NOW() \nWHERE id = {{ $('Postgres Insert Email1').item.json.id }};",
+        "options": {}
+      },
+      "id": "a4114bb1-a621-4a8f-b29a-1a655ff8257c",
+      "name": "Update DB Complaint1",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        256,
+        464
+      ],
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE emails \nSET response_sent = true, reply_sent_at = NOW() \nWHERE id = {{ $('Postgres Insert Email1').item.json.id }};",
+        "options": {}
+      },
+      "id": "cde81d74-4a8f-4632-88b6-3372d42c1d93",
+      "name": "Update DB General1",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        256,
+        608
+      ],
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE emails \nSET response_sent = true, reply_sent_at = NOW() \nWHERE id = {{ $('Postgres Insert Email1').item.json.id }};",
+        "options": {}
+      },
+      "id": "47dbde19-07ae-4b61-98a2-efcfbf8e8280",
+      "name": "Update DB Spam1",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        256,
+        912
+      ],
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Analyze the following email and return a JSON object with exactly these fields:\n- category: one of [Support Request, Sales Inquiry, Job Application, Complaint, General Question, Spam]\n- sentiment: one of [Positive, Neutral, Angry]\n- priority: one of [High, Medium, Low]\n- confidence: a number between 0 and 1\n- manual_review: true if confidence is below 0.75, otherwise false\n\nRules for priority:\n- High: contains words like urgent, legal, cancel, invoice, critical, asap\n- Low: Spam or newsletter\n- Medium: everything else\n\nReturn ONLY valid JSON, no explanation, no markdown, no code block.\n\nSubject: {{ $('Prepare Email Data1').item.json.subject }}\nBody: {{ $('Prepare Email Data1').item.json.body }}",
+        "batching": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.9,
+      "position": [
+        -1296,
+        480
+      ],
+      "id": "ba72e065-0d3d-47c1-8335-ed9312eb8f17",
+      "name": "Basic LLM Chain"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-flash-latest",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        -1296,
+        720
+      ],
+      "id": "2775a6b0-e9c8-4c5f-a8ab-a791b85f7017",
+      "name": "Google Gemini Chat Model",
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "operation": "executeQuery",
+        "query": "UPDATE emails SET duplicate_flag = true WHERE sender_email = '{{ $('Prepare Email Data1').item.json.sender }}' AND subject = '{{ $('Prepare Email Data1').item.json.subject }}';",
+        "options": {}
+      },
+      "id": "3d4e6686-72b9-420e-86c3-d696bc602e92",
+      "name": "Flag Duplicate",
+      "type": "n8n-nodes-base.postgres",
+      "typeVersion": 2,
+      "position": [
+        -1312,
+        864
+      ],
+      "credentials": {}
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "92f6cde2-2b3e-4561-8b51-03852ae0519d",
+              "name": "id",
+              "value": "={{ $('Postgres Insert Email1').item.json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "29005dd1-258e-4045-aae9-204684feba52",
+              "name": "status",
+              "value": "success",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        512,
+        464
+      ],
+      "id": "ae69abff-776c-4ac8-a19e-c006504429f1",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "92f6cde2-2b3e-4561-8b51-03852ae0519d",
+              "name": "id",
+              "value": "={{ $('Postgres Insert Email1').item.json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "29005dd1-258e-4045-aae9-204684feba52",
+              "name": "status",
+              "value": "success",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        512,
+        0
+      ],
+      "id": "fefa5e96-a132-483b-b00e-551bebdf5858",
+      "name": "Edit Fields1"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "92f6cde2-2b3e-4561-8b51-03852ae0519d",
+              "name": "id",
+              "value": "={{ $('Postgres Insert Email1').item.json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "29005dd1-258e-4045-aae9-204684feba52",
+              "name": "status",
+              "value": "success",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        512,
+        160
+      ],
+      "id": "fc481e59-17d9-4dfa-9194-fcaf9bfbb09c",
+      "name": "Edit Fields2"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "92f6cde2-2b3e-4561-8b51-03852ae0519d",
+              "name": "id",
+              "value": "={{ $('Postgres Insert Email1').item.json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "29005dd1-258e-4045-aae9-204684feba52",
+              "name": "status",
+              "value": "success",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        512,
+        304
+      ],
+      "id": "3d39c1df-f81b-4706-b938-8642944107de",
+      "name": "Edit Fields3"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "92f6cde2-2b3e-4561-8b51-03852ae0519d",
+              "name": "id",
+              "value": "={{ $('Postgres Insert Email1').item.json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "29005dd1-258e-4045-aae9-204684feba52",
+              "name": "status",
+              "value": "success",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        512,
+        608
+      ],
+      "id": "06fb5805-52ed-4b4a-a09f-72351c0ba682",
+      "name": "Edit Fields4"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Gmail Trigger": {
+      "main": [
+        [
+          {
+            "node": "Prepare Email Data1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Duplicate Check": {
+      "main": [
+        [
+          {
+            "node": "Is Duplicate?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Is Duplicate?": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Flag Duplicate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Parse Gemini Response": {
+      "main": [
+        [
+          {
+            "node": "Postgres Insert Email1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Log to Google Sheets": {
+      "main": [
+        [
+          {
+            "node": "Category Router1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Manual Review Alert": {
+      "main": [
+        [
+          {
+            "node": "Update DB Manual Review",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update DB Job": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Prepare Email Data1": {
+      "main": [
+        [
+          {
+            "node": "Duplicate Check",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Postgres Insert Email1": {
+      "main": [
+        [
+          {
+            "node": "Log to Google Sheets",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Category Router1": {
+      "main": [
+        [
+          {
+            "node": "Send Support Reply1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Sales Reply1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Job Application Reply1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Complaint Reply1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send General Reply1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Update DB Spam1",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Send Manual Review Alert",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Support Reply1": {
+      "main": [
+        [
+          {
+            "node": "Update DB Support1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Sales Reply1": {
+      "main": [
+        [
+          {
+            "node": "Update DB Sales1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Job Application Reply1": {
+      "main": [
+        [
+          {
+            "node": "Update DB Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send Complaint Reply1": {
+      "main": [
+        [
+          {
+            "node": "Update DB Complaint1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send General Reply1": {
+      "main": [
+        [
+          {
+            "node": "Update DB General1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update DB Support1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update DB Sales1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update DB Complaint1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update DB General1": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields4",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Parse Gemini Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Sheets Update Complaint",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields3": {
+      "main": [
+        [
+          {
+            "node": "Sheets Update Job",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields2": {
+      "main": [
+        [
+          {
+            "node": "Sheets Update Sales",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields1": {
+      "main": [
+        [
+          {
+            "node": "Sheets Update Support",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields4": {
+      "main": [
+        [
+          {
+            "node": "Sheets Update General",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1",
+    "availableInMCP": false
+  },
+  "versionId": "0cef5579-17b1-46f4-ab94-9f83d48fccc0",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "33d3118021c86740b1a15c617d0d9d55d063df19d7374e00a1b8953c3734f20d"
+  },
+  "id": "V5m9Qe_bnjjhQ0693PfM2",
+  "tags": []
+}
